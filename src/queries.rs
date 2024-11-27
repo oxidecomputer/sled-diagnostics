@@ -11,7 +11,9 @@ use tokio::io::AsyncReadExt;
 
 const DLADM: &str = "/usr/sbin/dladm";
 const IPADM: &str = "/usr/sbin/ipadm";
+const PARGS: &str = "/usr/bin/pargs";
 const PFEXEC: &str = "/usr/bin/pfexec";
+const PSTACK: &str = "/usr/bin/pstack";
 const ZONEADM: &str = "/usr/sbin/zoneadm";
 
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -200,9 +202,17 @@ pub fn dladm_show_linkprop() -> Command {
     cmd
 }
 
-/*
- * Public API
- */
+pub fn pargs_process(pid: i32) -> Command {
+    let mut cmd = std::process::Command::new(PFEXEC);
+    cmd.env_clear().arg(PARGS).arg("-ae").arg(pid.to_string());
+    cmd
+}
+
+pub fn pstack_process(pid: i32) -> Command {
+    let mut cmd = std::process::Command::new(PFEXEC);
+    cmd.env_clear().arg(PSTACK).arg(pid.to_string());
+    cmd
+}
 
 #[cfg(test)]
 mod test {
@@ -238,7 +248,7 @@ mod test {
     #[tokio::test]
     async fn test_command_stderr_is_correct() {
         let mut command = Command::new("bash");
-        command.env_clear().args(&["-c", "echo oxide computer > /dev/stderr"]);
+        command.env_clear().args(["-c", "echo oxide computer > /dev/stderr"]);
 
         let res = execute_command_with_timeout(command, Duration::from_secs(5))
             .await
@@ -250,7 +260,7 @@ mod test {
     #[tokio::test]
     async fn test_command_stdout_stderr_are_interleaved() {
         let mut command = Command::new("bash");
-        command.env_clear().args(&[
+        command.env_clear().args([
             "-c",
             "echo one > /dev/stdout \
             && echo two > /dev/stderr \

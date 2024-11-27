@@ -10,6 +10,12 @@ mod queries;
 pub use queries::SupportBundleCommandHttpOutput;
 use queries::*;
 
+#[cfg(target_os = "illumos")]
+mod contract;
+
+#[cfg(not(target_os = "illumos"))]
+use std::process::Command;
+
 /// List all zones on a sled.
 pub async fn zoneadm_info(
 ) -> Result<SupportBundleCmdOutput, SupportBundleCmdError> {
@@ -46,4 +52,52 @@ pub async fn dladm_info(
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>>>()
         .await
+}
+
+/// Retrieve pargs output for all found Oxide processes.
+#[cfg(target_os = "illumos")]
+pub async fn pargs_oxide_processes(
+) -> Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>> {
+    contract::find_oxide_pids()
+        .unwrap()
+        .iter()
+        .map(|pid| pargs_process(*pid))
+        .map(|c| async move {
+            execute_command_with_timeout(c, DEFAULT_TIMEOUT).await
+        })
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>>>()
+        .await
+}
+
+#[cfg(not(target_os = "illumos"))]
+pub async fn pargs_oxide_processes(
+) -> Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>> {
+    let mut command = Command::new("echo");
+    command.arg("cannot get pargs on non illumos platforms");
+    vec![execute_command_with_timeout(command, DEFAULT_TIMEOUT).await]
+}
+
+/// Retrieve pstack output for all found Oxide processes.
+#[cfg(target_os = "illumos")]
+pub async fn pstack_oxide_processes(
+) -> Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>> {
+    contract::find_oxide_pids()
+        .unwrap()
+        .iter()
+        .map(|pid| pstack_process(*pid))
+        .map(|c| async move {
+            execute_command_with_timeout(c, DEFAULT_TIMEOUT).await
+        })
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>>>()
+        .await
+}
+
+#[cfg(not(target_os = "illumos"))]
+pub async fn pstack_oxide_processes(
+) -> Vec<Result<SupportBundleCmdOutput, SupportBundleCmdError>> {
+    let mut command = Command::new("echo");
+    command.arg("cannot get pargs on non illumos platforms");
+    vec![execute_command_with_timeout(command, DEFAULT_TIMEOUT).await]
 }
